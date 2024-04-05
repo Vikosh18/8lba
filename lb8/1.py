@@ -1,0 +1,114 @@
+import requests
+import pandas as pd
+import mplfinance as mpf
+import logging
+from datetime import datetime, timedelta
+
+class CustomFormatter(logging.Formatter):
+    def format(self, record):
+        record.msg = "CUSTOM: " + record.msg
+        return super().format(record)
+
+# Створення логгерів для модулів baseloader та binanceloader
+baseloader_logger = logging.getLogger('baseloader')
+binanceloader_logger = logging.getLogger('binanceloader')
+
+# Створення форматера
+formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Створення консольного хендлера
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+
+# Створення файлового хендлера
+file_handler = logging.FileHandler('logfile.log')
+file_handler.setFormatter(formatter)
+
+# Додавання хендлерів до логгерів
+baseloader_logger.addHandler(console_handler)
+baseloader_logger.addHandler(file_handler)
+binanceloader_logger.addHandler(console_handler)
+binanceloader_logger.addHandler(file_handler)
+
+# Налаштування рівня логування
+baseloader_logger.setLevel(logging.INFO)
+binanceloader_logger.setLevel(logging.INFO)
+
+# Функція отримання списку продуктів
+def get_products():
+    url = 'https://api.binance.com/api/v3/exchangeInfo'
+    response = requests.get(url)
+    data = response.json()
+    products = [product['symbol'] for product in data['symbols']]
+    products_df = pd.DataFrame(products, columns=['Product'])
+    return products_df
+
+# Функція отримання історичних даних
+def get_historical_data(symbol, interval, start_time, end_time):
+    base_url = 'https://api.binance.com/api/v1/klines'
+    params = {
+        'symbol': symbol,
+        'interval': interval,
+        'startTime': start_time,
+        'endTime': end_time
+    }
+    response = requests.get(base_url, params=params)
+    data = response.json()
+    columns = ['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time',
+               'Quote asset volume', 'Number of trades', 'Taker buy base asset volume',
+               'Taker buy quote asset volume', 'Ignore']
+    df = pd.DataFrame(data, columns=columns)
+    df['Open'] = pd.to_numeric(df['Open'])
+    df['High'] = pd.to_numeric(df['High'])
+    df['Low'] = pd.to_numeric(df['Low'])
+    df['Close'] = pd.to_numeric(df['Close'])
+    df['Volume'] = pd.to_numeric(df['Volume'])  
+    df['Open time'] = pd.to_datetime(df['Open time'], unit='ms')
+    df.set_index('Open time', inplace=True)
+    return df
+
+# Функція для побудови свічок
+def plot_candlestick(data, title):
+    mpf.plot(data, type='line', style='charles', volume=True, ylabel='Price', ylabel_lower='Volume', title=title, show_nontrading=True)
+
+# Отримання списку продуктів
+print("Список доступних продуктів:")
+products_df = get_products()
+print(products_df)
+
+# Вибір продуктів для аналізу
+selected_products = ['BTCUSDT', 'ETHUSDT', 'LTCUSDT']
+
+# Налаштування параметрів для аналізу
+interval = '1d'  # щоденно
+end_time = datetime.now()
+start_time_day = end_time - timedelta(days=1)
+start_time_month = end_time - timedelta(days=30)
+start_time_year = end_time - timedelta(days=365)
+
+# Аналіз і побудова графіків для кожного вибраного продукту
+for product in selected_products:
+    print(f"\nІсторичні дані для продукту {product}:")
+    
+    print("\nЗа останній день:")
+    historical_data_day = get_historical_data(product, interval, int(start_time_day.timestamp())*1000, int(end_time.timestamp())*1000)
+    print(historical_data_day)
+    
+    print("\nЗа останній місяць:")
+    historical_data_month = get_historical_data(product, interval, int(start_time_month.timestamp())*1000, int(end_time.timestamp())*1000)
+    print(historical_data_month)
+    
+    print("\nЗа останній рік:")
+    historical_data_year = get_historical_data(product, interval, int(start_time_year.timestamp())*1000, int(end_time.timestamp())*1000)
+    print(historical_data_year)
+    
+    print(f"\nГрафіки для продукту {product}:")
+    
+    print("\nГрафік за останній день:")
+    plot_candlestick(historical_data_day, f"{product} - Last Day")
+    
+    print("\nГрафік за останній місяць:")
+    plot_candlestick(historical_data_month, f"{product} - Last Month")
+    
+    print("\nГрафік за останній рік:")
+    plot_candlestick(historical_data_year, f"{product} - Last Year")
