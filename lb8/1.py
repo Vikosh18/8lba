@@ -9,32 +9,32 @@ class CustomFormatter(logging.Formatter):
         record.msg = "CUSTOM: " + record.msg
         return super().format(record)
 
-# Створення логгерів для модулів baseloader та binanceloader
+
 baseloader_logger = logging.getLogger('baseloader')
 binanceloader_logger = logging.getLogger('binanceloader')
 
-# Створення форматера
+
 formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Створення консольного хендлера
+
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 
-# Створення файлового хендлера
+
 file_handler = logging.FileHandler('logfile.log')
 file_handler.setFormatter(formatter)
 
-# Додавання хендлерів до логгерів
+
 baseloader_logger.addHandler(console_handler)
 baseloader_logger.addHandler(file_handler)
 binanceloader_logger.addHandler(console_handler)
 binanceloader_logger.addHandler(file_handler)
 
-# Налаштування рівня логування
+
 baseloader_logger.setLevel(logging.INFO)
 binanceloader_logger.setLevel(logging.INFO)
 
-# Функція отримання списку продуктів
+
 def get_products():
     url = 'https://api.binance.com/api/v3/exchangeInfo'
     response = requests.get(url)
@@ -43,7 +43,7 @@ def get_products():
     products_df = pd.DataFrame(products, columns=['Product'])
     return products_df
 
-# Функція отримання історичних даних
+
 def get_historical_data(symbol, interval, start_time, end_time):
     base_url = 'https://api.binance.com/api/v1/klines'
     params = {
@@ -67,26 +67,26 @@ def get_historical_data(symbol, interval, start_time, end_time):
     df.set_index('Open time', inplace=True)
     return df
 
-# Функція для побудови свічок
+
 def plot_candlestick(data, title):
     mpf.plot(data, type='line', style='charles', volume=True, ylabel='Price', ylabel_lower='Volume', title=title, show_nontrading=True)
 
-# Отримання списку продуктів
+
 print("Список доступних продуктів:")
 products_df = get_products()
 print(products_df)
 
-# Вибір продуктів для аналізу
+
 selected_products = ['BTCUSDT', 'ETHUSDT', 'LTCUSDT']
 
-# Налаштування параметрів для аналізу
+
 interval = '1d'  # щоденно
 end_time = datetime.now()
 start_time_day = end_time - timedelta(days=1)
 start_time_month = end_time - timedelta(days=30)
 start_time_year = end_time - timedelta(days=365)
 
-# Аналіз і побудова графіків для кожного вибраного продукту
+
 for product in selected_products:
     print(f"\nІсторичні дані для продукту {product}:")
     
